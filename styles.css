@@ -9,6 +9,7 @@
   --accent: #5fa3ff;
   --suggestion: #202532;
   --divider: rgba(246, 247, 251, 0.18);
+  --active-outline: rgba(255, 255, 255, 0.8);
 }
 
 body.theme-light {
@@ -20,6 +21,7 @@ body.theme-light {
   --accent: #3b82f6;
   --suggestion: #e4e6f1;
   --divider: rgba(19, 20, 31, 0.2);
+  --active-outline: rgba(59, 130, 246, 0.8);
 }
 
 * {
@@ -256,7 +258,7 @@ body.theme-light .theme-toggle-label {
 }
 
 .suggestion-bubble.active {
-  outline: 2px solid rgba(255, 255, 255, 0.8);
+  outline: 2px solid var(--active-outline);
 }
 
 .suggestion-bubble:hover,
