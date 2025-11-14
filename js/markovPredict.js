@@ -96,10 +96,16 @@ export function generateSuggestions(prefix, model, options = {}) {
     const ctxKey = getContextKey(normalized + node.fragment, model);
     const distribution = model.contexts[ctxKey];
     if (!distribution) continue;
-    const entries = distributionEntries(distribution);
+    const alpha = 0.45;
+    const entries = Object.entries(distribution)
+      .map(([char, weight]) => ({
+        char,
+        probability: (weight + alpha) / (Object.values(distribution).reduce((s, w) => s + w + alpha, 0))
+      }))
+      .sort((a, b) => b.probability - a.probability);
 
     for (const entry of entries) {
-      const nextLogProb = node.logProb + Math.log(entry.probability || Number.EPSILON);
+      const nextLogProb = node.logProb + Math.log(entry.probability);
       if (entry.char === model.endToken) {
         const suggestion = node.fragment.length > 0 ? prefix + node.fragment : prefix;
         if (!seen.has(suggestion) && suggestion.trim().length >= 2) {
