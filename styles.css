@@ -8,6 +8,7 @@
   --capsule-text: #ffffff;
   --accent: #5fa3ff;
   --suggestion: #202532;
+  --divider: rgba(246, 247, 251, 0.18);
 }
 
 body.theme-light {
@@ -18,6 +19,7 @@ body.theme-light {
   --capsule-text: #13141f;
   --accent: #3b82f6;
   --suggestion: #e4e6f1;
+  --divider: rgba(19, 20, 31, 0.2);
 }
 
 * {
@@ -31,7 +33,7 @@ body {
   color: var(--text);
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: stretch;
   padding: clamp(1.5rem, 4vw, 3rem);
 }
 
@@ -42,6 +44,7 @@ body {
   flex-direction: column;
   gap: 2rem;
   align-items: center;
+  min-height: calc(100vh - clamp(1.5rem, 4vw, 3rem) * 2);
 }
 
 .hero {
@@ -125,6 +128,7 @@ body.theme-light .theme-toggle-label {
   flex-direction: column;
   gap: 1.5rem;
   align-items: center;
+  flex: 1;
 }
 
 /* Zone lettres */
@@ -132,7 +136,7 @@ body.theme-light .theme-toggle-label {
 .word-field {
   width: 100%;
   min-height: 130px;
-  border-bottom: 1px solid rgba(246, 247, 251, 0.18);
+  border-bottom: 1px solid var(--divider);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -167,7 +171,8 @@ body.theme-light .theme-toggle-label {
   display: flex;
   justify-content: center;
   align-items: center;
-  color: rgba(246, 247, 251, 0.45);
+  color: var(--text-muted);
+  opacity: 0.65;
   pointer-events: none;
   font-size: 1.05rem;
   transition: opacity 160ms ease;
@@ -217,7 +222,7 @@ body.theme-light .theme-toggle-label {
 
 .orbit-zone {
   width: 100%;
-  min-height: 180px;
+  min-height: 260px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -228,7 +233,7 @@ body.theme-light .theme-toggle-label {
 .orbit {
   position: relative;
   width: 100%;
-  height: 160px;
+  height: 220px;
   overflow: hidden;
 }
 

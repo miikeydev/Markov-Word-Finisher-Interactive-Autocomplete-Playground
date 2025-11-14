@@ -1,5 +1,6 @@
 import { loadMarkovModel, getModelStats } from './markovModel.js';
 import { generateSuggestions } from './markovPredict.js';
+import { loadDictionary, dictionaryHas } from './dictionary.js';
 import {
   getState,
   setInputValue as setStateInput,
@@ -12,8 +13,12 @@ import {
 import * as ui from './ui.js';
 
 let model = null;
+let dictionary = null;
 const MIN_PREFIX_LENGTH = 1;
 const LETTER_PATTERN = /^[a-zA-ZÀ-ÖØ-öø-ÿœŒæÆ]$/;
+
+const DEFAULT_EMPTY_MESSAGE = 'Aucune suggestion à afficher.';
+const DICT_EMPTY_MESSAGE = 'Aucun mot du dictionnaire ne correspond à ce préfixe.';
 
 function debounce(fn, delay = 110) {
   let timer = null;
@@ -45,6 +50,15 @@ function applySuggestion(index) {
   ui.focusStage();
 }
 
+function filterSuggestionsWithDictionary(list) {
+  if (!dictionary || !dictionary.size) return list;
+  return list.filter((suggestion) => dictionaryHas(dictionary, suggestion.completion));
+}
+
+function updateEmptyStateMessage(useDictionaryMessage) {
+  ui.setEmptyStateMessage(useDictionaryMessage ? DICT_EMPTY_MESSAGE : DEFAULT_EMPTY_MESSAGE);
+}
+
 function updateProbabilityDisplay(probability) {
   setWordProbability(probability);
   ui.updateProbability(probability);
@@ -58,6 +72,7 @@ function refreshSuggestions(prefixValue) {
     resetActive();
     ui.renderSuggestions([], -1);
     ui.toggleEmptyState(false);
+    updateEmptyStateMessage(false);
     updateProbabilityDisplay(0);
     return;
   }
@@ -67,8 +82,9 @@ function refreshSuggestions(prefixValue) {
     maxDepth: 22,
   });
 
-  const totalScore = rawSuggestions.reduce((sum, item) => sum + (item.score || 0), 0);
-  const suggestions = rawSuggestions.map((item) => ({
+  const filteredSuggestions = filterSuggestionsWithDictionary(rawSuggestions);
+  const totalScore = filteredSuggestions.reduce((sum, item) => sum + (item.score || 0), 0);
+  const suggestions = filteredSuggestions.map((item) => ({
     ...item,
     probability: totalScore > 0 ? item.score / totalScore : 0,
   }));
@@ -77,7 +93,10 @@ function refreshSuggestions(prefixValue) {
   resetActive();
   const state = getState();
   ui.renderSuggestions(suggestions, state.activeIndex);
-  ui.toggleEmptyState(suggestions.length === 0);
+  const noSuggestions = suggestions.length === 0;
+  const dictionaryMismatch = Boolean(dictionary && dictionary.size && rawSuggestions.length && !suggestions.length);
+  ui.toggleEmptyState(noSuggestions);
+  updateEmptyStateMessage(dictionaryMismatch);
   updateProbabilityDisplay(suggestions[0]?.probability || 0);
 }
 
@@ -177,7 +196,12 @@ async function bootstrap() {
   ui.bindSuggestionClick(handleSuggestionClick);
 
   try {
-    model = await loadMarkovModel();
+    const [loadedModel, loadedDictionary] = await Promise.all([
+      loadMarkovModel(),
+      loadDictionary(),
+    ]);
+    model = loadedModel;
+    dictionary = loadedDictionary;
     const stats = getModelStats(model);
     setModelStats(stats);
     ui.updateStats(stats);

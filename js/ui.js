@@ -17,7 +17,7 @@ let animationId = null;
 let lastTimestamp = null;
 
 function randomVelocity() {
-  return (Math.random() - 0.5) * 80;
+  return (Math.random() - 0.5) * 120;
 }
 
 function updateThemeToggle() {
@@ -256,6 +256,11 @@ export function toggleEmptyState(show) {
   elements.emptyMessage.hidden = !show;
 }
 
+export function setEmptyStateMessage(text) {
+  if (!elements.emptyMessage) return;
+  elements.emptyMessage.textContent = text;
+}
+
 export function updateStats(stats) {
   if (!stats) return;
   elements.statOrder.textContent = `Ordre: ${stats.order ?? '–'}`;
@@ -335,8 +340,16 @@ function stepPhysics(timestamp) {
       state.vx = 0;
       state.vy = 0;
     } else {
-      state.vx *= 0.99;
-      state.vy *= 0.99;
+      const jitterX = (Math.random() - 0.5) * 30 * dt;
+      const jitterY = (Math.random() - 0.5) * 30 * dt;
+      state.vx = state.vx * 0.995 + jitterX;
+      state.vy = state.vy * 0.995 + jitterY;
+      const speed = Math.hypot(state.vx, state.vy);
+      if (speed < 8) {
+        const angle = Math.random() * Math.PI * 2;
+        state.vx += Math.cos(angle) * 20 * dt;
+        state.vy += Math.sin(angle) * 20 * dt;
+      }
       state.x += state.vx * dt;
       state.y += state.vy * dt;
     }
