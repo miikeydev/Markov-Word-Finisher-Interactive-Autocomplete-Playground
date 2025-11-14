@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Markov Playground</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <main class="playground">
+        <header class="hero">
+          <p class="eyebrow">Chaînes de Markov</p>
+          <h1>Complétez vos mots en douceur</h1>
+          <p class="subtitle">
+            Tapez un début, laissez le modèle suggérer la suite. Utilisez Tab pour
+            accepter la suggestion fantôme ou Enter pour valider un badge actif.
+          </p>
+        </header>
+        <section class="input-block">
+          <label for="input-prefix" class="sr-only">Entrée</label>
+          <div class="input-shell">
+            <input
+              id="input-prefix"
+              type="text"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="Commencez à taper..."
+            />
+            <div id="ghost-overlay" aria-hidden="true"></div>
+          </div>
+          <p class="hint">Longueur minimale : 2 caractères</p>
+        </section>
+        <section class="suggestions-panel">
+          <div class="panel-header">
+            <h2>Suggestions</h2>
+            <div class="panel-actions">
+              <button id="clear-input" type="button">Réinitialiser</button>
+            </div>
+          </div>
+          <div id="suggestions-container" class="suggestions-list"></div>
+          <p id="no-suggestion-message" class="empty-state" hidden>
+            Aucune suggestion pour ce préfixe.
+          </p>
+        </section>
+      </main>
+      <aside id="stats-panel" class="stats-panel">
+        <h2>Stats modèle</h2>
+        <dl class="stats-list">
+          <div>
+            <dt>Ordre</dt>
+            <dd id="stat-order">-</dd>
+          </div>
+          <div>
+            <dt>Contexts</dt>
+            <dd id="stat-contexts">-</dd>
+          </div>
+          <div>
+            <dt>Transitions</dt>
+            <dd id="stat-transitions">-</dd>
+          </div>
+        </dl>
+        <section class="distribution-panel">
+          <h3>Distribution suivante</h3>
+          <div id="distribution-chart" class="distribution-chart"></div>
+        </section>
+      </aside>
+    </div>
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>
