@@ -10,12 +10,22 @@ function getContextKey(sequence, model) {
   return (filler + tail).slice(-order) || filler;
 }
 
+const distributionCache = new WeakMap();
+
 function distributionEntries(distribution = {}) {
+  if (!distribution) return [];
+  const cached = distributionCache.get(distribution);
+  if (cached) return cached;
   const total = Object.values(distribution).reduce((sum, weight) => sum + weight, 0);
-  if (total === 0) return [];
-  return Object.entries(distribution)
+  if (total === 0) {
+    distributionCache.set(distribution, []);
+    return [];
+  }
+  const entries = Object.entries(distribution)
     .map(([char, weight]) => ({ char, weight, probability: weight / total }))
     .sort((a, b) => b.probability - a.probability);
+  distributionCache.set(distribution, entries);
+  return entries;
 }
 
 function deterministicPick(distribution) {

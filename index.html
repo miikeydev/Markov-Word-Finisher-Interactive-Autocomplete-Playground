@@ -8,10 +8,22 @@
   </head>
   <body>
     <div id="app">
+      <div class="theme-toggle-wrapper">
+        <input
+          id="theme-toggle"
+          type="checkbox"
+          class="theme-toggle-input"
+          aria-label="Activer le thème clair"
+        />
+        <label for="theme-toggle" class="theme-toggle-label">
+          <span class="theme-toggle-thumb"></span>
+        </label>
+      </div>
+
       <header class="hero">
         <p class="eyebrow">Atelier Markov</p>
-        <h1>Un mot qui se forme dans l'air</h1>
-        <p>Typez n'importe où pour faire apparaître vos lettres. Les bulles orbitent et proposent la suite idéale.</p>
+        <h1>Atelier de complétion Markov</h1>
+        <p>Saisissez un début de mot et observez les prolongements les plus probables proposés par le modèle de Markov.</p>
       </header>
 
       <main class="experience">
