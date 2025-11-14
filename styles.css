@@ -89,6 +89,7 @@ body {
   border-radius: 999px;
   padding: 0.15rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
 }
 
 body.theme-light .language-toggle {
@@ -119,6 +120,9 @@ body.theme-light .language-toggle {
 
 .theme-toggle-wrapper {
   padding: 0.5rem 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .theme-toggle-input {
@@ -201,6 +205,7 @@ body.theme-light .theme-toggle-label {
   overflow-x: auto;
   scrollbar-width: none;
   position: relative;
+  padding-right: 3rem;
 }
 
 .capsule-track::-webkit-scrollbar {
@@ -233,6 +238,7 @@ body.theme-light .theme-toggle-label {
   pointer-events: none;
   white-space: nowrap;
   transition: opacity 120ms ease;
+  flex: 0 0 auto;
 }
 
 body.theme-light .ghost-suffix {

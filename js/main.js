@@ -42,7 +42,7 @@ const LETTER_PATTERN = /^[a-zA-ZÀ-ÖØ-öø-ÿœŒæÆ]$/;
 
 const models = {};
 const dictionaries = {};
-let currentLanguage = 'en';
+let currentLanguage = 'fr';
 let currentLanguageConfig = LANG_CONFIG[currentLanguage];
 
 function debounce(fn, delay = 110) {
@@ -91,6 +91,14 @@ function updateEmptyStateMessage(useDictionaryMessage) {
   ui.setEmptyStateMessage(message);
 }
 
+function getGhostCompletionCandidate(suggestions, activeIndex) {
+  if (!suggestions.length) return '';
+  if (activeIndex >= 0 && activeIndex < suggestions.length) {
+    return suggestions[activeIndex]?.completion || '';
+  }
+  return suggestions[0]?.completion || '';
+}
+
 function updateProbabilityDisplay(probability) {
   setWordProbability(probability);
   ui.updateProbability(probability);
@@ -133,7 +141,7 @@ function refreshSuggestions(prefixValue) {
   const dictionaryMismatch = Boolean(dictionaryAvailable && rawSuggestions.length && !suggestions.length);
   ui.toggleEmptyState(noSuggestions);
   updateEmptyStateMessage(dictionaryMismatch);
-  ui.updateGhostSuffix(prefixValue, suggestions[0]?.completion || '');
+  ui.updateGhostSuffix(prefixValue, getGhostCompletionCandidate(suggestions, state.activeIndex));
   updateProbabilityDisplay(suggestions[0]?.probability || 0);
 }
 
@@ -195,6 +203,7 @@ function handleStageKeydown(event) {
         const nextIndex = cycleActive(1);
         const freshState = getState();
         ui.renderSuggestions(freshState.suggestions, nextIndex);
+        ui.updateGhostSuffix(freshState.inputValue, getGhostCompletionCandidate(freshState.suggestions, nextIndex));
         updateProbabilityDisplay(freshState.suggestions[nextIndex]?.probability || freshState.suggestions[0]?.probability || 0);
       }
       break;
@@ -205,6 +214,7 @@ function handleStageKeydown(event) {
         const nextIndex = cycleActive(-1);
         const freshState = getState();
         ui.renderSuggestions(freshState.suggestions, nextIndex);
+        ui.updateGhostSuffix(freshState.inputValue, getGhostCompletionCandidate(freshState.suggestions, nextIndex));
         updateProbabilityDisplay(freshState.suggestions[nextIndex]?.probability || freshState.suggestions[0]?.probability || 0);
       }
       break;
@@ -268,8 +278,9 @@ async function bootstrap() {
   ui.bindStageKeydown(handleStageKeydown);
   ui.bindStageClick(() => ui.focusStage());
   ui.bindSuggestionClick(handleSuggestionClick);
-  ui.bindLanguageToggle((lang) => {
-    applyLanguage(lang);
+  ui.bindLanguageToggle(() => {
+    const next = currentLanguage === 'fr' ? 'en' : 'fr';
+    applyLanguage(next);
   });
 
   try {

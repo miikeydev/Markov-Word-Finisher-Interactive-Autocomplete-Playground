@@ -51,19 +51,17 @@ function initThemeToggle() {
 
 export function bindLanguageToggle(handler) {
   if (!elements.languageToggle) return;
-  elements.languageToggle.addEventListener('click', (event) => {
-    const button = event.target.closest('.language-button');
-    if (!button) return;
-    const lang = button.dataset.lang;
-    if (!lang) return;
-    handler(lang);
+  elements.languageToggle.addEventListener('click', () => {
+    handler();
   });
 }
 
 export function setActiveLanguageButton(lang) {
   if (!elements.languageToggle) return;
   elements.languageToggle.querySelectorAll('.language-button').forEach((button) => {
-    button.classList.toggle('active', button.dataset.lang === lang);
+    const isActive = button.dataset.lang === lang;
+    button.classList.toggle('active', isActive);
+    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
   });
 }
 
