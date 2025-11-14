@@ -1,6 +1,6 @@
 const cache = {
   promise: null,
-  words: null,
+  dictionary: null,
 };
 
 function normalize(word = '') {
@@ -8,26 +8,29 @@ function normalize(word = '') {
 }
 
 function parseList(rawText) {
-  const set = new Set();
+  const words = new Set();
+  const prefixes = new Set();
   rawText.split(/\r?\n/).forEach((line) => {
     const cleaned = normalize(line);
-    if (cleaned.length) {
-      set.add(cleaned);
+    if (!cleaned.length) return;
+    words.add(cleaned);
+    for (let i = 1; i <= cleaned.length; i += 1) {
+      prefixes.add(cleaned.slice(0, i));
     }
   });
-  return set;
+  return { words, prefixes };
 }
 
 export async function loadDictionary(url = 'francais.txt') {
-  if (cache.words) return cache.words;
+  if (cache.dictionary) return cache.dictionary;
   if (!cache.promise) {
     cache.promise = fetch(url)
       .then(async (response) => {
         if (!response.ok) throw new Error(`Impossible de charger le dictionnaire (${response.status})`);
         const text = await response.text();
-        cache.words = parseList(text);
+        cache.dictionary = parseList(text);
         cache.promise = null;
-        return cache.words;
+        return cache.dictionary;
       })
       .catch((error) => {
         cache.promise = null;
@@ -37,7 +40,16 @@ export async function loadDictionary(url = 'francais.txt') {
   return cache.promise;
 }
 
+export function dictionaryHasWord(dictionary, word) {
+  if (!dictionary?.words) return false;
+  return dictionary.words.has(normalize(word));
+}
+
+export function dictionaryHasPrefix(dictionary, word) {
+  if (!dictionary?.prefixes) return false;
+  return dictionary.prefixes.has(normalize(word));
+}
+
 export function dictionaryHas(dictionary, word) {
-  if (!dictionary) return true;
-  return dictionary.has(normalize(word));
+  return dictionaryHasWord(dictionary, word);
 }

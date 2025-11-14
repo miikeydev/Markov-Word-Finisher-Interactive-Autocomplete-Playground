@@ -1,6 +1,6 @@
 import { loadMarkovModel, getModelStats } from './markovModel.js';
 import { generateSuggestions } from './markovPredict.js';
-import { loadDictionary, dictionaryHas } from './dictionary.js';
+import { loadDictionary, dictionaryHasWord, dictionaryHasPrefix } from './dictionary.js';
 import {
   getState,
   setInputValue as setStateInput,
@@ -51,8 +51,11 @@ function applySuggestion(index) {
 }
 
 function filterSuggestionsWithDictionary(list) {
-  if (!dictionary || !dictionary.size) return list;
-  return list.filter((suggestion) => dictionaryHas(dictionary, suggestion.completion));
+  if (!dictionary) return list;
+  return list.filter((suggestion) => {
+    const completion = suggestion.completion;
+    return dictionaryHasWord(dictionary, completion) || dictionaryHasPrefix(dictionary, completion);
+  });
 }
 
 function updateEmptyStateMessage(useDictionaryMessage) {
@@ -93,8 +96,9 @@ function refreshSuggestions(prefixValue) {
   resetActive();
   const state = getState();
   ui.renderSuggestions(suggestions, state.activeIndex);
+  const dictionaryAvailable = Boolean(dictionary?.words?.size);
   const noSuggestions = suggestions.length === 0;
-  const dictionaryMismatch = Boolean(dictionary && dictionary.size && rawSuggestions.length && !suggestions.length);
+  const dictionaryMismatch = Boolean(dictionaryAvailable && rawSuggestions.length && !suggestions.length);
   ui.toggleEmptyState(noSuggestions);
   updateEmptyStateMessage(dictionaryMismatch);
   updateProbabilityDisplay(suggestions[0]?.probability || 0);
