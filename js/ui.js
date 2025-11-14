@@ -1,36 +1,65 @@
 const elements = {
-  input: document.getElementById('input-prefix'),
-  ghost: document.getElementById('ghost-overlay'),
-  suggestions: document.getElementById('suggestions-container'),
+  stage: document.getElementById('stage'),
+  capsuleTrack: document.getElementById('capsule-track'),
+  placeholder: document.getElementById('capsule-placeholder'),
+  orbit: document.getElementById('suggestions-orbit'),
   emptyMessage: document.getElementById('no-suggestion-message'),
-  clearButton: document.getElementById('clear-input'),
   statOrder: document.getElementById('stat-order'),
   statContexts: document.getElementById('stat-contexts'),
   statTransitions: document.getElementById('stat-transitions'),
-  distributionChart: document.getElementById('distribution-chart'),
+  statProbability: document.getElementById('stat-probability'),
 };
 
-function escapeHtml(value = '') {
-  const span = document.createElement('span');
-  span.textContent = value;
-  return span.innerHTML;
+const REMOVAL_DELAY = 160;
+
+function createCapsule(letter) {
+  const capsule = document.createElement('span');
+  capsule.className = 'letter-capsule';
+  capsule.textContent = letter.toUpperCase();
+  return capsule;
 }
 
-export function bindInput(handler) {
-  elements.input.addEventListener('input', handler);
+export function renderCapsules(word) {
+  const letters = [...word];
+  const track = elements.capsuleTrack;
+  const currentChildren = Array.from(track.children);
+
+  if (currentChildren.length > letters.length) {
+    for (let i = letters.length; i < currentChildren.length; i += 1) {
+      const node = currentChildren[i];
+      node.classList.add('removing');
+      setTimeout(() => node.remove(), REMOVAL_DELAY);
+    }
+  }
+
+  letters.forEach((letter, index) => {
+    const existing = track.children[index];
+    if (existing) {
+      existing.textContent = letter.toUpperCase();
+    } else {
+      const capsule = createCapsule(letter);
+      track.appendChild(capsule);
+    }
+  });
+
+  elements.placeholder.classList.toggle('hidden', letters.length > 0);
 }
 
-export function bindKeydown(handler) {
-  elements.input.addEventListener('keydown', handler);
+export function bindStageKeydown(handler) {
+  elements.stage.addEventListener('keydown', handler);
 }
 
-export function bindClear(handler) {
-  elements.clearButton.addEventListener('click', handler);
+export function bindStageClick(handler) {
+  elements.stage.addEventListener('click', handler);
+}
+
+export function focusStage() {
+  elements.stage.focus();
 }
 
 export function bindSuggestionClick(handler) {
-  elements.suggestions.addEventListener('click', (event) => {
-    const target = event.target.closest('.suggestion-badge');
+  elements.orbit.addEventListener('click', (event) => {
+    const target = event.target.closest('.suggestion-bubble');
     if (!target) return;
     const index = Number(target.dataset.index);
     if (Number.isNaN(index)) return;
@@ -38,27 +67,28 @@ export function bindSuggestionClick(handler) {
   });
 }
 
-export function setInputValue(value) {
-  elements.input.value = value;
-}
-
-export function focusInput() {
-  elements.input.focus();
-}
-
 export function renderSuggestions(suggestions, activeIndex = -1) {
-  elements.suggestions.innerHTML = '';
+  const row = elements.orbit;
+  row.innerHTML = '';
+  if (!suggestions.length) return;
+
   suggestions.forEach((suggestion, index) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'suggestion-badge';
-    if (index === activeIndex) {
-      button.classList.add('active');
-    }
-    button.dataset.index = String(index);
-    button.setAttribute('aria-pressed', index === activeIndex ? 'true' : 'false');
-    button.textContent = suggestion.completion;
-    elements.suggestions.appendChild(button);
+    const bubble = document.createElement('button');
+    bubble.type = 'button';
+    bubble.className = 'suggestion-bubble';
+    if (index === 0) bubble.classList.add('primary');
+    if (index === activeIndex) bubble.classList.add('active');
+    bubble.dataset.index = String(index);
+    bubble.textContent = suggestion.completion;
+
+    const probability = suggestion.probability ?? 0;
+    const scale = 0.9 + probability * 0.6;
+    const opacity = 0.4 + probability * 0.6;
+
+    bubble.style.setProperty('--scale', scale.toFixed(2));
+    bubble.style.opacity = opacity.toFixed(2);
+
+    row.appendChild(bubble);
   });
 }
 
@@ -66,52 +96,14 @@ export function toggleEmptyState(show) {
   elements.emptyMessage.hidden = !show;
 }
 
-export function updateGhostCompletion(prefix, suffix) {
-  if (!suffix) {
-    elements.ghost.innerHTML = '';
-    return;
-  }
-  elements.ghost.innerHTML = `
-    <span class="ghost-prefix">${escapeHtml(prefix)}</span>
-    <span class="ghost-suffix">${escapeHtml(suffix)}</span>
-  `;
-}
-
 export function updateStats(stats) {
   if (!stats) return;
-  elements.statOrder.textContent = stats.order ?? '–';
-  elements.statContexts.textContent = stats.contexts ?? '–';
-  elements.statTransitions.textContent = stats.transitions ?? '–';
+  elements.statOrder.textContent = `Ordre: ${stats.order ?? '–'}`;
+  elements.statContexts.textContent = `Contexts: ${stats.contexts ?? '–'}`;
+  elements.statTransitions.textContent = `Transitions: ${stats.transitions ?? '–'}`;
 }
 
-function prettyChar(char) {
-  if (char === ' ') return '␠';
-  if (char === '\n') return '↵';
-  if (char === '$') return '∎';
-  return char;
-}
-
-export function renderDistribution(entries) {
-  elements.distributionChart.innerHTML = '';
-  if (!entries || !entries.length) {
-    const placeholder = document.createElement('p');
-    placeholder.textContent = 'Aucune transition';
-    placeholder.className = 'empty-state';
-    elements.distributionChart.appendChild(placeholder);
-    return;
-  }
-
-  entries.slice(0, 5).forEach((entry) => {
-    const bar = document.createElement('div');
-    bar.className = 'distribution-bar';
-    bar.dataset.char = prettyChar(entry.char);
-    bar.title = `${entry.char === '$' ? 'Fin de mot' : `"${entry.char}"`} — ${(entry.probability * 100).toFixed(1)}%`;
-
-    const fill = document.createElement('div');
-    fill.className = 'distribution-fill visible';
-    fill.style.transform = `scaleY(${Math.max(entry.probability, 0.05)})`;
-
-    bar.appendChild(fill);
-    elements.distributionChart.appendChild(bar);
-  });
+export function updateProbability(probability) {
+  const percent = probability && probability > 0 ? `${(probability * 100).toFixed(1)}%` : '–';
+  elements.statProbability.textContent = `Probabilité: ${percent}`;
 }

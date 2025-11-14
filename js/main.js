@@ -1,22 +1,19 @@
 import { loadMarkovModel, getModelStats } from './markovModel.js';
-import {
-  generateCompletion,
-  generateSuggestions,
-  getDistributionForPrefix,
-} from './markovPredict.js';
+import { generateSuggestions } from './markovPredict.js';
 import {
   getState,
   setInputValue as setStateInput,
   setSuggestions,
-  setActiveIndex,
   cycleActive,
   resetActive,
   setModelStats,
+  setWordProbability,
 } from './state.js';
 import * as ui from './ui.js';
 
 let model = null;
-const MIN_PREFIX_LENGTH = 2;
+const MIN_PREFIX_LENGTH = 1;
+const LETTER_PATTERN = /^[a-zA-ZÀ-ÖØ-öø-ÿœŒæÆ]$/;
 
 function debounce(fn, delay = 110) {
   let timer = null;
@@ -29,13 +26,6 @@ function debounce(fn, delay = 110) {
       fn(...lastArgs);
     }, delay);
   };
-  debounced.flush = () => {
-    if (timer) {
-      clearTimeout(timer);
-      timer = null;
-      fn(...(lastArgs ?? []));
-    }
-  };
   debounced.cancel = () => {
     if (timer) clearTimeout(timer);
     timer = null;
@@ -43,132 +33,147 @@ function debounce(fn, delay = 110) {
   return debounced;
 }
 
-function clearSuggestionsUI() {
-  setSuggestions([]);
-  setActiveIndex(-1);
-  ui.renderSuggestions([], -1);
-  ui.toggleEmptyState(false);
-  ui.updateGhostCompletion('', '');
-}
-
 function applySuggestion(index) {
   const state = getState();
   const target = state.suggestions[index] ?? state.suggestions[0];
   if (!target) return;
-  setStateInput(target.completion);
-  ui.setInputValue(target.completion);
-  ui.updateGhostCompletion('', '');
-  resetActive();
   debouncedPredict.cancel();
+  setStateInput(target.completion);
+  ui.renderCapsules(target.completion);
+  resetActive();
   refreshSuggestions(target.completion);
+  ui.focusStage();
 }
 
-function handleSuggestionClick(index) {
-  applySuggestion(index);
-  ui.focusInput();
-}
-
-function updateDistribution(prefixValue) {
-  if (!model) return;
-  const distribution = getDistributionForPrefix(prefixValue, model);
-  ui.renderDistribution(distribution);
-}
-
-function syncGhost(prefixValue, suggestions) {
-  if (!suggestions.length) {
-    const completion = generateCompletion(prefixValue, model, { deterministic: true });
-    const suffix = completion.suffix;
-    ui.updateGhostCompletion(prefixValue, suffix);
-    return;
-  }
-  const best = suggestions[0];
-  const suffix = best.completion.slice(prefixValue.length);
-  ui.updateGhostCompletion(prefixValue, suffix);
+function updateProbabilityDisplay(probability) {
+  setWordProbability(probability);
+  ui.updateProbability(probability);
 }
 
 function refreshSuggestions(prefixValue) {
   if (!model) return;
-  updateDistribution(prefixValue);
+
   if (prefixValue.trim().length < MIN_PREFIX_LENGTH) {
-    clearSuggestionsUI();
+    setSuggestions([]);
+    resetActive();
+    ui.renderSuggestions([], -1);
+    ui.toggleEmptyState(false);
+    updateProbabilityDisplay(0);
     return;
   }
-  const suggestions = generateSuggestions(prefixValue, model, {
+
+  const rawSuggestions = generateSuggestions(prefixValue, model, {
     maxSuggestions: 8,
-    maxDepth: 18,
+    maxDepth: 22,
   });
+
+  const totalScore = rawSuggestions.reduce((sum, item) => sum + (item.score || 0), 0);
+  const suggestions = rawSuggestions.map((item) => ({
+    ...item,
+    probability: totalScore > 0 ? item.score / totalScore : 0,
+  }));
+
   setSuggestions(suggestions);
+  resetActive();
   const state = getState();
   ui.renderSuggestions(suggestions, state.activeIndex);
   ui.toggleEmptyState(suggestions.length === 0);
-  syncGhost(prefixValue, suggestions);
+  updateProbabilityDisplay(suggestions[0]?.probability || 0);
 }
 
-const debouncedPredict = debounce(refreshSuggestions, 110);
+const debouncedPredict = debounce(refreshSuggestions, 120);
 
-function handleInput(event) {
-  const value = event.target.value;
+function commitValue(value) {
   setStateInput(value);
+  ui.renderCapsules(value);
   resetActive();
   debouncedPredict(value);
 }
 
-function handleKeydown(event) {
-  const state = getState();
-  if (!state.suggestions.length && event.key !== 'Tab') {
+function handleCharacterInput(char) {
+  const value = getState().inputValue + char;
+  commitValue(value);
+}
+
+function handleBackspace() {
+  const value = getState().inputValue;
+  if (!value) return;
+  commitValue(value.slice(0, -1));
+}
+
+function handleStageKeydown(event) {
+  if (event.metaKey || event.ctrlKey || event.altKey) {
     return;
   }
 
-  switch (event.key) {
-    case 'ArrowDown':
+  const key = event.key;
+  const state = getState();
+
+  if (LETTER_PATTERN.test(key)) {
+    event.preventDefault();
+    handleCharacterInput(key.toLowerCase());
+    return;
+  }
+
+  switch (key) {
+    case 'Backspace':
       event.preventDefault();
-      {
-        const nextIndex = cycleActive(1);
-        ui.renderSuggestions(getState().suggestions, nextIndex);
-      }
+      handleBackspace();
       break;
-    case 'ArrowUp':
-      event.preventDefault();
-      {
-        const nextIndex = cycleActive(-1);
-        ui.renderSuggestions(getState().suggestions, nextIndex);
+    case 'Tab':
+      if (state.suggestions.length) {
+        event.preventDefault();
+        applySuggestion(0);
       }
       break;
     case 'Enter':
-      if (getState().activeIndex >= 0) {
+      if (state.activeIndex >= 0) {
         event.preventDefault();
-        applySuggestion(getState().activeIndex);
+        applySuggestion(state.activeIndex);
       }
       break;
-    case 'Tab':
-      if (model) {
-        const stateAfter = getState();
-        if (stateAfter.suggestions.length) {
-          event.preventDefault();
-          applySuggestion(0);
-        }
+    case 'ArrowDown':
+      if (!state.suggestions.length) break;
+      event.preventDefault();
+      {
+        const nextIndex = cycleActive(1);
+        const freshState = getState();
+        ui.renderSuggestions(freshState.suggestions, nextIndex);
+        updateProbabilityDisplay(freshState.suggestions[nextIndex]?.probability || freshState.suggestions[0]?.probability || 0);
       }
+      break;
+    case 'ArrowUp':
+      if (!state.suggestions.length) break;
+      event.preventDefault();
+      {
+        const nextIndex = cycleActive(-1);
+        const freshState = getState();
+        ui.renderSuggestions(freshState.suggestions, nextIndex);
+        updateProbabilityDisplay(freshState.suggestions[nextIndex]?.probability || freshState.suggestions[0]?.probability || 0);
+      }
+      break;
+    case 'Escape':
+      event.preventDefault();
+      commitValue('');
+      updateProbabilityDisplay(0);
       break;
     default:
       break;
   }
 }
 
-function handleClear() {
-  setStateInput('');
-  ui.setInputValue('');
-  clearSuggestionsUI();
-  ui.focusInput();
-  refreshSuggestions('');
+function handleSuggestionClick(index) {
+  applySuggestion(index);
 }
 
 async function bootstrap() {
+  ui.renderCapsules('');
+  ui.updateProbability(0);
   ui.toggleEmptyState(false);
-  ui.renderDistribution(null);
-  ui.updateGhostCompletion('', '');
-  ui.bindInput(handleInput);
-  ui.bindKeydown(handleKeydown);
-  ui.bindClear(handleClear);
+  ui.focusStage();
+
+  ui.bindStageKeydown(handleStageKeydown);
+  ui.bindStageClick(() => ui.focusStage());
   ui.bindSuggestionClick(handleSuggestionClick);
 
   try {
@@ -179,7 +184,6 @@ async function bootstrap() {
   } catch (error) {
     console.error(error);
     ui.toggleEmptyState(true);
-    ui.renderSuggestions([], -1);
     const message = document.getElementById('no-suggestion-message');
     if (message) {
       message.textContent = 'Erreur de chargement : ' + error.message;
@@ -187,9 +191,7 @@ async function bootstrap() {
     return;
   }
 
-  const initialValue = '';
-  setStateInput(initialValue);
-  refreshSuggestions(initialValue);
+  commitValue('');
 }
 
 bootstrap();

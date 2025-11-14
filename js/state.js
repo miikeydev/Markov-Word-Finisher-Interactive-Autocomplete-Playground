@@ -3,6 +3,7 @@ const state = {
   suggestions: [],
   activeIndex: -1,
   modelStats: null,
+  wordProbability: 0,
 };
 
 export function getState() {
@@ -40,4 +41,8 @@ export function resetActive() {
 
 export function setModelStats(stats) {
   state.modelStats = stats;
+}
+
+export function setWordProbability(probability) {
+  state.wordProbability = probability;
 }
