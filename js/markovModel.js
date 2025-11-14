@@ -1,7 +1,4 @@
-const modelCache = {
-  data: null,
-  promise: null,
-};
+const modelCache = new Map();
 
 function computeTotals(contexts = {}) {
   let transitions = 0;
@@ -29,28 +26,32 @@ function normalizeModel(raw) {
 }
 
 export async function loadMarkovModel(url = 'markov_model.json') {
-  if (modelCache.data) {
-    return modelCache.data;
+  const cached = modelCache.get(url);
+  if (cached?.data) {
+    return cached.data;
   }
 
-  if (!modelCache.promise) {
-    modelCache.promise = fetch(url)
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error(`Impossible de charger le modèle (${response.status})`);
-        }
-        const json = await response.json();
-        modelCache.data = Object.freeze(normalizeModel(json));
-        modelCache.promise = null;
-        return modelCache.data;
-      })
-      .catch((error) => {
-        modelCache.promise = null;
-        throw error;
-      });
+  if (cached?.promise) {
+    return cached.promise;
   }
 
-  return modelCache.promise;
+  const promise = fetch(url)
+    .then(async (response) => {
+      if (!response.ok) {
+        throw new Error(`Impossible de charger le modèle (${response.status})`);
+      }
+      const json = await response.json();
+      const data = Object.freeze(normalizeModel(json));
+      modelCache.set(url, { data });
+      return data;
+    })
+    .catch((error) => {
+      modelCache.delete(url);
+      throw error;
+    });
+
+  modelCache.set(url, { promise });
+  return promise;
 }
 
 export function getModelStats(model) {

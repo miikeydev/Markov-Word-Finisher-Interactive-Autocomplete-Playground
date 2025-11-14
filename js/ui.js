@@ -2,6 +2,7 @@ const elements = {
   stage: document.getElementById('stage'),
   capsuleTrack: document.getElementById('capsule-track'),
   placeholder: document.getElementById('capsule-placeholder'),
+  ghostSuffix: document.getElementById('capsule-ghost'),
   orbit: document.getElementById('suggestions-orbit'),
   emptyMessage: document.getElementById('no-suggestion-message'),
   statOrder: document.getElementById('stat-order'),
@@ -9,6 +10,10 @@ const elements = {
   statTransitions: document.getElementById('stat-transitions'),
   statProbability: document.getElementById('stat-probability'),
   themeToggle: document.getElementById('theme-toggle'),
+  languageToggle: document.querySelector('.language-toggle'),
+  heroEyebrow: document.getElementById('hero-eyebrow'),
+  heroTitle: document.getElementById('hero-title'),
+  heroSubtitle: document.getElementById('hero-subtitle'),
 };
 
 const REMOVAL_DELAY = 160;
@@ -44,6 +49,39 @@ function initThemeToggle() {
   });
 }
 
+export function bindLanguageToggle(handler) {
+  if (!elements.languageToggle) return;
+  elements.languageToggle.addEventListener('click', (event) => {
+    const button = event.target.closest('.language-button');
+    if (!button) return;
+    const lang = button.dataset.lang;
+    if (!lang) return;
+    handler(lang);
+  });
+}
+
+export function setActiveLanguageButton(lang) {
+  if (!elements.languageToggle) return;
+  elements.languageToggle.querySelectorAll('.language-button').forEach((button) => {
+    button.classList.toggle('active', button.dataset.lang === lang);
+  });
+}
+
+export function updateLanguageTexts({ heroEyebrow, heroTitle, heroSubtitle, placeholder }) {
+  if (elements.heroEyebrow && heroEyebrow) {
+    elements.heroEyebrow.textContent = heroEyebrow;
+  }
+  if (elements.heroTitle && heroTitle) {
+    elements.heroTitle.textContent = heroTitle;
+  }
+  if (elements.heroSubtitle && heroSubtitle) {
+    elements.heroSubtitle.textContent = heroSubtitle;
+  }
+  if (elements.placeholder && placeholder) {
+    elements.placeholder.textContent = placeholder;
+  }
+}
+
 function createCapsule(letter) {
   const capsule = document.createElement('span');
   capsule.className = 'letter-capsule';
@@ -54,23 +92,30 @@ function createCapsule(letter) {
 export function renderCapsules(word) {
   const letters = [...word];
   const track = elements.capsuleTrack;
-  const currentChildren = Array.from(track.children);
+  const ghost = elements.ghostSuffix;
+  const capsules = Array.from(track.querySelectorAll('.letter-capsule'));
 
-  if (currentChildren.length > letters.length) {
-    for (let i = letters.length; i < currentChildren.length; i += 1) {
-      const node = currentChildren[i];
+  if (capsules.length > letters.length) {
+    for (let i = letters.length; i < capsules.length; i += 1) {
+      const node = capsules[i];
       node.classList.add('removing');
       setTimeout(() => node.remove(), REMOVAL_DELAY);
     }
   }
 
   letters.forEach((letter, index) => {
-    const existing = track.children[index];
+    const existing = capsules[index];
     if (existing) {
       existing.textContent = letter.toUpperCase();
     } else {
       const capsule = createCapsule(letter);
-      track.appendChild(capsule);
+      capsule.classList.add('ripple');
+      setTimeout(() => capsule.classList.remove('ripple'), 400);
+      if (ghost) {
+        track.insertBefore(capsule, ghost);
+      } else {
+        track.appendChild(capsule);
+      }
     }
   });
 
@@ -259,6 +304,24 @@ export function toggleEmptyState(show) {
 export function setEmptyStateMessage(text) {
   if (!elements.emptyMessage) return;
   elements.emptyMessage.textContent = text;
+}
+
+export function updateGhostSuffix(prefix, completion) {
+  const ghost = elements.ghostSuffix;
+  if (!ghost) return;
+  if (!prefix || !completion || !completion.toLowerCase().startsWith(prefix.toLowerCase())) {
+    ghost.textContent = '';
+    ghost.classList.add('hidden');
+    return;
+  }
+  const suffix = completion.slice(prefix.length);
+  if (!suffix) {
+    ghost.textContent = '';
+    ghost.classList.add('hidden');
+    return;
+  }
+  ghost.textContent = suffix.toUpperCase();
+  ghost.classList.remove('hidden');
 }
 
 export function updateStats(stats) {

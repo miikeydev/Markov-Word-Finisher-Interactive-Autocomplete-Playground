@@ -12,13 +12,38 @@ import {
 } from './state.js';
 import * as ui from './ui.js';
 
-let model = null;
-let dictionary = null;
+const LANG_CONFIG = {
+  fr: {
+    label: 'FR',
+    heroEyebrow: 'Atelier Markov',
+    heroTitle: 'Atelier de complétion Markov',
+    heroSubtitle: 'Saisissez un début de mot et observez les prolongements les plus probables proposés par le modèle de Markov.',
+    placeholder: 'Commencez à taper…',
+    emptyDefault: 'Aucune suggestion à afficher.',
+    emptyDictionary: 'Aucun mot du dictionnaire ne correspond à ce préfixe.',
+    modelUrl: 'markov_model.json',
+    dictionaryUrl: 'francais.txt',
+  },
+  en: {
+    label: 'EN',
+    heroEyebrow: 'Markov Studio',
+    heroTitle: 'Markov Completion Studio',
+    heroSubtitle: 'Type the beginning of a word and watch the model propose the most likely endings.',
+    placeholder: 'Start typing…',
+    emptyDefault: 'No suggestions to display.',
+    emptyDictionary: 'No dictionary word matches this prefix.',
+    modelUrl: 'markov_model_en.json',
+    dictionaryUrl: 'english.txt',
+  },
+};
+
 const MIN_PREFIX_LENGTH = 1;
 const LETTER_PATTERN = /^[a-zA-ZÀ-ÖØ-öø-ÿœŒæÆ]$/;
 
-const DEFAULT_EMPTY_MESSAGE = 'Aucune suggestion à afficher.';
-const DICT_EMPTY_MESSAGE = 'Aucun mot du dictionnaire ne correspond à ce préfixe.';
+const models = {};
+const dictionaries = {};
+let currentLanguage = 'en';
+let currentLanguageConfig = LANG_CONFIG[currentLanguage];
 
 function debounce(fn, delay = 110) {
   let timer = null;
@@ -51,6 +76,7 @@ function applySuggestion(index) {
 }
 
 function filterSuggestionsWithDictionary(list) {
+  const dictionary = dictionaries[currentLanguage];
   if (!dictionary) return list;
   return list.filter((suggestion) => {
     const completion = suggestion.completion;
@@ -59,7 +85,10 @@ function filterSuggestionsWithDictionary(list) {
 }
 
 function updateEmptyStateMessage(useDictionaryMessage) {
-  ui.setEmptyStateMessage(useDictionaryMessage ? DICT_EMPTY_MESSAGE : DEFAULT_EMPTY_MESSAGE);
+  const message = useDictionaryMessage
+    ? currentLanguageConfig.emptyDictionary
+    : currentLanguageConfig.emptyDefault;
+  ui.setEmptyStateMessage(message);
 }
 
 function updateProbabilityDisplay(probability) {
@@ -68,7 +97,9 @@ function updateProbabilityDisplay(probability) {
 }
 
 function refreshSuggestions(prefixValue) {
+  const model = models[currentLanguage];
   if (!model) return;
+  const dictionary = dictionaries[currentLanguage];
 
   if (prefixValue.trim().length < MIN_PREFIX_LENGTH) {
     setSuggestions([]);
@@ -76,6 +107,7 @@ function refreshSuggestions(prefixValue) {
     ui.renderSuggestions([], -1);
     ui.toggleEmptyState(false);
     updateEmptyStateMessage(false);
+    ui.updateGhostSuffix('', '');
     updateProbabilityDisplay(0);
     return;
   }
@@ -101,6 +133,7 @@ function refreshSuggestions(prefixValue) {
   const dictionaryMismatch = Boolean(dictionaryAvailable && rawSuggestions.length && !suggestions.length);
   ui.toggleEmptyState(noSuggestions);
   updateEmptyStateMessage(dictionaryMismatch);
+  ui.updateGhostSuffix(prefixValue, suggestions[0]?.completion || '');
   updateProbabilityDisplay(suggestions[0]?.probability || 0);
 }
 
@@ -189,26 +222,63 @@ function handleSuggestionClick(index) {
   applySuggestion(index);
 }
 
+function applyLanguage(lang) {
+  if (!LANG_CONFIG[lang]) return;
+  if (lang === currentLanguage) return;
+  currentLanguage = lang;
+  currentLanguageConfig = LANG_CONFIG[lang];
+  document.documentElement.setAttribute('lang', lang);
+  ui.setActiveLanguageButton(lang);
+  ui.updateLanguageTexts(currentLanguageConfig);
+  updateEmptyStateMessage(false);
+  const stats = models[lang] ? getModelStats(models[lang]) : null;
+  if (stats) {
+    setModelStats(stats);
+    ui.updateStats(stats);
+  }
+  const value = getState().inputValue;
+  debouncedPredict.cancel();
+  refreshSuggestions(value);
+}
+
+async function loadResources() {
+  const entries = Object.entries(LANG_CONFIG);
+  await Promise.all(
+    entries.map(([lang, config]) =>
+      Promise.all([
+        loadMarkovModel(config.modelUrl).then((model) => {
+          models[lang] = model;
+        }),
+        loadDictionary(config.dictionaryUrl).then((dict) => {
+          dictionaries[lang] = dict;
+        }),
+      ])
+    )
+  );
+}
+
 async function bootstrap() {
   ui.renderCapsules('');
   ui.updateProbability(0);
   ui.toggleEmptyState(false);
   ui.focusStage();
-
+  ui.updateLanguageTexts(currentLanguageConfig);
+  ui.setActiveLanguageButton(currentLanguage);
+  document.documentElement.setAttribute('lang', currentLanguage);
   ui.bindStageKeydown(handleStageKeydown);
   ui.bindStageClick(() => ui.focusStage());
   ui.bindSuggestionClick(handleSuggestionClick);
+  ui.bindLanguageToggle((lang) => {
+    applyLanguage(lang);
+  });
 
   try {
-    const [loadedModel, loadedDictionary] = await Promise.all([
-      loadMarkovModel(),
-      loadDictionary(),
-    ]);
-    model = loadedModel;
-    dictionary = loadedDictionary;
-    const stats = getModelStats(model);
-    setModelStats(stats);
-    ui.updateStats(stats);
+    await loadResources();
+    const stats = getModelStats(models[currentLanguage]);
+    if (stats) {
+      setModelStats(stats);
+      ui.updateStats(stats);
+    }
   } catch (error) {
     console.error(error);
     ui.toggleEmptyState(true);

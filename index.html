@@ -8,27 +8,38 @@
   </head>
   <body>
     <div id="app">
-      <div class="theme-toggle-wrapper">
-        <input
-          id="theme-toggle"
-          type="checkbox"
-          class="theme-toggle-input"
-          aria-label="Activer le thème clair"
-        />
-        <label for="theme-toggle" class="theme-toggle-label">
-          <span class="theme-toggle-thumb"></span>
-        </label>
+      <div class="top-controls">
+        <div class="language-toggle" role="group" aria-label="Choix de langue">
+          <button type="button" class="language-button active" data-lang="fr">FR</button>
+          <button type="button" class="language-button" data-lang="en">EN</button>
+        </div>
+        <div class="theme-toggle-wrapper" title="Toggle theme (Light / Dark)">
+          <span class="theme-toggle-text">Theme</span>
+          <input
+            id="theme-toggle"
+            type="checkbox"
+            class="theme-toggle-input"
+            aria-label="Activer le thème clair"
+          />
+          <label for="theme-toggle" class="theme-toggle-label">
+            <span class="theme-toggle-thumb"></span>
+          </label>
+        </div>
       </div>
 
       <header class="hero">
-        <p class="eyebrow">Atelier Markov</p>
-        <h1>Atelier de complétion Markov</h1>
-        <p>Saisissez un début de mot et observez les prolongements les plus probables proposés par le modèle de Markov.</p>
+        <p class="eyebrow" id="hero-eyebrow">Atelier Markov</p>
+        <h1 id="hero-title">Atelier de complétion Markov</h1>
+        <p id="hero-subtitle">
+          Saisissez un début de mot et observez les prolongements les plus probables proposés par le modèle de Markov.
+        </p>
       </header>
 
       <main class="experience">
         <div id="stage" class="word-field" tabindex="0" aria-label="Zone de saisie custom">
-          <div class="capsule-track" id="capsule-track" aria-live="polite"></div>
+          <div class="capsule-track" id="capsule-track" aria-live="polite">
+            <span id="capsule-ghost" class="ghost-suffix hidden" aria-hidden="true"></span>
+          </div>
           <div id="capsule-placeholder" class="capsule-placeholder">Commencez à taper…</div>
         </div>
 
