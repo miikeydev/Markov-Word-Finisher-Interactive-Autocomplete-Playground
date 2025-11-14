@@ -17,10 +17,14 @@ const LANG_CONFIG = {
     label: 'FR',
     heroEyebrow: 'Atelier Markov',
     heroTitle: 'Atelier de complétion Markov',
-    heroSubtitle: 'Saisissez un début de mot et observez les prolongements les plus probables proposés par le modèle de Markov.',
+    heroSubtitle: 'Saisissez un début de mot et observez les prolongements les plus probables proposés par le modèle.',
     placeholder: 'Commencez à taper…',
     emptyDefault: 'Aucune suggestion à afficher.',
     emptyDictionary: 'Aucun mot du dictionnaire ne correspond à ce préfixe.',
+    statOrder: 'Ordre',
+    statContexts: 'Contextes',
+    statTransitions: 'Transitions',
+    statProbability: 'Probabilité',
     modelUrl: 'markov_model.json',
     dictionaryUrl: 'francais.txt',
   },
@@ -32,6 +36,10 @@ const LANG_CONFIG = {
     placeholder: 'Start typing…',
     emptyDefault: 'No suggestions to display.',
     emptyDictionary: 'No dictionary word matches this prefix.',
+    statOrder: 'Order',
+    statContexts: 'Contexts',
+    statTransitions: 'Transitions',
+    statProbability: 'Probability',
     modelUrl: 'markov_model_en.json',
     dictionaryUrl: 'english.txt',
   },
@@ -77,10 +85,15 @@ function applySuggestion(index) {
 
 function filterSuggestionsWithDictionary(list) {
   const dictionary = dictionaries[currentLanguage];
+  const prefix = getState().inputValue?.toLowerCase() || '';
   if (!dictionary) return list;
+
   return list.filter((suggestion) => {
-    const completion = suggestion.completion;
-    return dictionaryHasWord(dictionary, completion) || dictionaryHasPrefix(dictionary, completion);
+    const completion = suggestion.completion.toLowerCase();
+
+    if (completion === prefix) return false;
+
+    return dictionaryHasWord(dictionary, completion);
   });
 }
 

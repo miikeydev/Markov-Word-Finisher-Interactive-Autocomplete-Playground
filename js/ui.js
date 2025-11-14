@@ -65,7 +65,7 @@ export function setActiveLanguageButton(lang) {
   });
 }
 
-export function updateLanguageTexts({ heroEyebrow, heroTitle, heroSubtitle, placeholder }) {
+export function updateLanguageTexts({ heroEyebrow, heroTitle, heroSubtitle, placeholder, statOrder, statContexts, statTransitions, statProbability }) {
   if (elements.heroEyebrow && heroEyebrow) {
     elements.heroEyebrow.textContent = heroEyebrow;
   }
@@ -77,6 +77,9 @@ export function updateLanguageTexts({ heroEyebrow, heroTitle, heroSubtitle, plac
   }
   if (elements.placeholder && placeholder) {
     elements.placeholder.textContent = placeholder;
+  }
+  if (statOrder) {
+    window._statLabels = { statOrder, statContexts, statTransitions, statProbability };
   }
 }
 
@@ -324,14 +327,16 @@ export function updateGhostSuffix(prefix, completion) {
 
 export function updateStats(stats) {
   if (!stats) return;
-  elements.statOrder.textContent = `Ordre: ${stats.order ?? '–'}`;
-  elements.statContexts.textContent = `Contexts: ${stats.contexts ?? '–'}`;
-  elements.statTransitions.textContent = `Transitions: ${stats.transitions ?? '–'}`;
+  const labels = window._statLabels || { statOrder: 'Order', statContexts: 'Contexts', statTransitions: 'Transitions', statProbability: 'Probability' };
+  elements.statOrder.textContent = `${labels.statOrder}: ${stats.order ?? '–'}`;
+  elements.statContexts.textContent = `${labels.statContexts}: ${stats.contexts ?? '–'}`;
+  elements.statTransitions.textContent = `${labels.statTransitions}: ${stats.transitions ?? '–'}`;
 }
 
 export function updateProbability(probability) {
+  const labels = window._statLabels || { statOrder: 'Order', statContexts: 'Contexts', statTransitions: 'Transitions', statProbability: 'Probability' };
   const percent = probability && probability > 0 ? `${(probability * 100).toFixed(1)}%` : '–';
-  elements.statProbability.textContent = `Probabilité: ${percent}`;
+  elements.statProbability.textContent = `${labels.statProbability}: ${percent}`;
 }
 
 function resolveBounds(state, width, height) {
