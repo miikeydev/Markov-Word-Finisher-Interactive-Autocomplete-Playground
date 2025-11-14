@@ -6,7 +6,7 @@ Markov Completion Studio is a lightweight web app that predicts word endings bas
 
 ---
 
-https://github.com/user-attachments/assets/220c9c4e-9e4f-4d14-8bba-826dfeaa6dd8
+https://github.com/user-attachments/assets/055047ef-ee8e-4869-892c-9276df9d730e
 
 ## Features
 
@@ -37,3 +37,4 @@ Then open the shown URL (typically `http://localhost:3000`).
 * The model is based purely on character transitions learned from a word list.
 * The dictionary filter prevents the display of invalid or nonsensical words.
 * No external dependencies or frameworks are required.
+
